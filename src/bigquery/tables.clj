@@ -1,6 +1,6 @@
 (ns bigquery.tables
   (:import [com.google.api.services.bigquery Bigquery Bigquery$Tables]
-           [com.google.api.services.bigquery.model Table TableList$Tables TableReference])
+           [com.google.api.services.bigquery.model Table TableList$Tables TableReference TableSchema TableFieldSchema])
   (:require [bigquery.coerce :as bc]
             [schema.core :as s]))
 
@@ -31,7 +31,7 @@
          (map bc/to-clojure))))
 
 
-(def TableReferenceSchema
+(def table-reference-schema
   "A reference for a table in a dataset"
   {:table-id s/Str
    :project-id s/Str
@@ -43,16 +43,50 @@
     (.setDatasetId dataset-id)
     (.setTableId   table-id)))
 
-(def TableSchema
-  "BigQuery Table schema"
-  {:table-reference TableReferenceSchema
-   (s/optional-key :description) s/Str})
+(def table-field-schema {:name                    s/Str
+                         :type                    (s/enum :string :integer :float :boolean :timestamp :record)
+                         (s/optional-key :mode)   (s/enum :nullable :required :repeated)
+                         (s/optional-key :fields) [(s/recursive #'table-field-schema)]})
 
-(defn- mk-table [{:keys [table-reference description] :as table}]
-  {:pre [(s/validate TableSchema table)]}
+(def table-schema
+  "BigQuery Table schema"
+  {:table-reference              table-reference-schema
+   (s/optional-key :description) s/Str
+   (s/optional-key :schema)      [table-field-schema]})
+
+(def field-type {:string "STRING"
+                 :integer "INTEGER"
+                 :float "FLOAT"
+                 :boolean "BOOLEAN"
+                 :timestamp "TIMESTAMP"
+                 :record "RECORD"})
+
+(def field-mode {:nullable "NULLABLE"
+                 :required "REQUIRED"
+                 :repeated "REPEATED"})
+
+(defn- mk-fields [{:keys [name type mode description fields]
+                   :or   {mode :nullable}}]
+  (let [s (TableFieldSchema. )]
+    (.setName s name)
+    (.setDescription s description)
+    (.setType s (field-type type))
+    (when fields
+      (.setFields s (map mk-fields fields)))
+    (when mode
+      (.setMode s (field-mode mode)))
+    s))
+
+(defn- mk-schema [schema]
+  (doto (TableSchema.)
+    (.setFields (map mk-fields schema))))
+
+(defn- mk-table [{:keys [table-reference description schema] :as table}]
+  {:pre [(s/validate table-schema table)]}
   (doto (Table. )
     (.setTableReference (mk-table-reference table-reference))
-    (.setDescription    description)))
+    (.setDescription    description)
+    (.setSchema         (mk-schema schema))))
 
 (extend-protocol bc/ToClojure
   Table
