@@ -6,16 +6,19 @@
 
 (defn- mk-table-row [row]
   (let [table-row (TableRow.)]
-    (doseq [keyval (seq row)]
-      (.set table-row (key keyval) (val keyval)))
-
+    (doseq [[k v] (seq row)]
+      (.set table-row k v))
     table-row))
 
-(defn insert-all [^Bigquery service project-id dataset-id table-id row]
-  (let [row            ( mk-table-row row)
-        table-data-row (.setJson (TableDataInsertAllRequest$Rows. ) row)
-        insert-request (.setRows (TableDataInsertAllRequest. ) [table-data-row])
-        op (-> service
-               (.tabledata)
-               (.insertAll project-id dataset-id table-id insert-request))]
+(defn- mk-insert-request-row [table-row]
+  (doto (TableDataInsertAllRequest$Rows. )
+    (.setJson table-row)))
+
+(defn insert-all [^Bigquery service project-id dataset-id table-id rows]
+  (let [data (->> rows
+                  (map mk-table-row)
+                  (map mk-insert-request-row))
+        request (doto (TableDataInsertAllRequest. )
+                  (.setRows data))
+        op      (-> service (.tabledata) (.insertAll project-id dataset-id table-id request))]
     (.execute op)))
