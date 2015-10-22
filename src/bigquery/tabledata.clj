@@ -6,8 +6,10 @@
 
 (defn- mk-table-row [row]
   (let [table-row (TableRow.)]
-    (doseq [[k v] (seq row)]
-      (.set table-row k v))
+    (doseq [[k v] row]
+      (if (coll? v)
+        (.set table-row k (map mk-table-row v))
+        (.set table-row k v)))
     table-row))
 
 (defn- mk-insert-request-row [table-row]
