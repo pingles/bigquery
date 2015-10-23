@@ -3,14 +3,14 @@
            [com.google.api.services.bigquery.model Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableRow])
   (:require [schema.core :as s]))
 
-
 (defn- mk-table-row [row]
-  (let [table-row (TableRow.)]
-    (doseq [[k v] row]
-      (if (coll? v)
-        (.set table-row k (map mk-table-row v))
-        (.set table-row k v)))
-    table-row))
+  (cond (map? row) (let [table-row (TableRow.)]
+                     (doseq [[k v] row]
+                       (if (coll? v)
+                         (.set table-row k (map mk-table-row v))
+                         (.set table-row k v)))
+                     table-row)
+        :else row))
 
 (defn- mk-insert-request-row [table-row]
   (doto (TableDataInsertAllRequest$Rows. )
