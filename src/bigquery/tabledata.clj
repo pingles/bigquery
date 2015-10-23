@@ -3,14 +3,19 @@
            [com.google.api.services.bigquery.model Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableRow])
   (:require [schema.core :as s]))
 
-(defn- mk-table-row [row]
-  (cond (map? row) (let [table-row (TableRow.)]
-                     (doseq [[k v] row]
-                       (if (coll? v)
-                         (.set table-row k (map mk-table-row v))
-                         (.set table-row k v)))
-                     table-row)
-        :else row))
+(defmulti mk-table-row (fn [row]
+                         (cond (map? row)  :record
+                               (coll? row) :repeated
+                               :else       :value)))
+(defmethod mk-table-row :record [m]
+  (let [table-row (TableRow. )]
+    (doseq [[k v] m]
+      (.set table-row k (mk-table-row v)))
+    table-row))
+(defmethod mk-table-row :repeated [coll]
+  (map mk-table-row coll))
+(defmethod mk-table-row :value [x]
+  x)
 
 (defn- mk-insert-request-row [table-row]
   (doto (TableDataInsertAllRequest$Rows. )
