@@ -1,6 +1,6 @@
-(defproject bigquery "0.1.1-SNAPSHOT"
+(defproject bigquery "0.1.1"
   :description "BijQuery"
-  :url "http://example.com/FIXME"
+  :url "https://github.com/pingles/bigquery"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.7.0"]
