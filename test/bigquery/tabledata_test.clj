@@ -2,14 +2,15 @@
   (:require [bigquery.tabledata :refer :all]
             [clojure.test :refer :all]))
 
-(deftest table-row
-  (let [r (mk-table-row {"test" "name"})]
-    (is (= "name" (get r "test"))))
-  (let [r (mk-table-row "value")]
-    (is (= "value" r)))
-  (let [r (mk-table-row ["a" "value"])]
-    (is (= ["a" "value"] r)))
-  (let [r (mk-table-row {"person" {"name" "paul"}})]
-    (is (= "paul" (get-in r ["person" "name"]))))
-  (let [r (mk-table-row {"aliases" ["paul" "pingles"]})]
-    (is (= ["paul" "pingles"] (get r "aliases")))))
+(deftest insert-request-rows
+  (let [r (mk-insert-request-row {"name" "paul"})]
+    (is (= {"json" {"name" "paul"}} r)))
+  (let [r (mk-insert-request-row {"name" "paul"
+                                  "addresses" [{"line1" "here"}]})
+        d (get r "json")]
+    (is (= "paul" (get d "name")))
+    (is (= [{"line1" "here"}] (get d "addresses"))))
+  (let [r (mk-insert-request-row {"name" "paul"
+                                  "id"   "1234"}
+                                 :insert-id (fn [m] (get m "id")))]
+    (is (= "1234" (.getInsertId r)))))

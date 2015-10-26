@@ -1,4 +1,4 @@
-(defproject bigquery "0.1.1-SNAPSHOT"
+(defproject bigquery "0.1.2-SNAPSHOT"
   :description "BijQuery"
   :url "http://example.com/FIXME"
   :license {:name "Eclipse Public License"

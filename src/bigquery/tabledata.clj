@@ -17,14 +17,17 @@
 (defmethod mk-table-row :value [x]
   x)
 
-(defn- mk-insert-request-row [table-row]
-  (doto (TableDataInsertAllRequest$Rows. )
-    (.setJson table-row)))
+(defn mk-insert-request-row
+  "Builds the insert request row for the input record map m. Optionally takes an insert-id function that returns a deduping identity for the row- retained by bigquery for a few minutes to detect duplicate insertion requests."
+  [m & {:keys [insert-id]}]
+  (let [row (TableDataInsertAllRequest$Rows. )]
+    (.setJson row (mk-table-row m))
+    (when insert-id
+      (.setInsertId row (insert-id m)))
+    row))
 
 (defn insert-all [^Bigquery service project-id dataset-id table-id rows]
-  (let [data (->> rows
-                  (map mk-table-row)
-                  (map mk-insert-request-row))
+  (let [data    (map mk-insert-request-row rows)
         request (doto (TableDataInsertAllRequest. )
                   (.setRows data))
         op      (-> service (.tabledata) (.insertAll project-id dataset-id table-id request))]
