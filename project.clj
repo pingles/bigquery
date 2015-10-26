@@ -1,4 +1,4 @@
-(defproject bigquery "0.1.1"
+(defproject bigquery "0.1.2-SNAPSHOT"
   :description "BijQuery"
   :url "https://github.com/pingles/bigquery"
   :license {:name "Eclipse Public License"
