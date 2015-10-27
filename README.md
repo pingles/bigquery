@@ -60,6 +60,23 @@ Currently `bigquery` supports service account authentication.
 (btd/insert-all bigquery-service "project-id" "dataset-id" "table-id" sample-data)
 ```
 
+## Jobs
+
+### Query
+
+```clojure
+(ns example
+  (:require [bigquery.jobs :as bj]))
+  
+(def q (bj/query-job "SELECT * FROM [example.table]"))
+(def j (bj/insert bigquery-service "project-id" q))
+
+;; wait for job to complete
+
+(query-results bigquery-service "project-id" (get-in j [:job-reference :job-id]))
+;; {:rows (("col1" "col2") ...), :schema ({:name "f0_", :type "STRING" ...})
+```
+
 ## License
 
 Copyright &copy; 2015 Paul Ingles
