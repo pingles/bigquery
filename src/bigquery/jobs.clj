@@ -1,7 +1,7 @@
 (ns bigquery.jobs
   (:use [bigquery.coerce :as bc])
   (:import [java.util Date]
-           [com.google.api.services.bigquery.model JobList Job JobConfigurationLoad JobConfigurationQuery JobConfiguration JobStatus JobStatistics JobList$Jobs JobReference GetQueryResultsResponse TableRow TableCell TableSchema TableFieldSchema]))
+           [com.google.api.services.bigquery.model JobList Job JobConfigurationLoad JobConfigurationQuery JobConfiguration JobStatus JobStatistics JobList$Jobs JobReference GetQueryResultsResponse TableRow TableCell TableSchema TableFieldSchema TableReference]))
 
 (extend-protocol bc/ToClojure
   JobReference
@@ -17,7 +17,8 @@
   (to-clojure [status] {:state  (.getState status)
                         :errors (.getErrors status)})
   JobStatistics
-  (to-clojure [statistics] {:started (Date. (.getStartTime statistics))
+  (to-clojure [statistics] {:started (when-let [e (.getStartTime statistics)]
+                                       (Date. e))
                             :ended   (when-let [e (.getEndTime   statistics)]
                                        (Date. e))})
   Job
@@ -32,9 +33,46 @@
   (let [op (-> service (.jobs) (.list project-id))]
     (to-clojure (.execute op))))
 
+(defn get [service project-id job-id]
+  (let [op (-> service (.jobs) (.get project-id job-id))]
+    (to-clojure (.execute op))))
+
 (defn insert [service project-id job]
   (let [op (-> service (.jobs) (.insert project-id job))]
     (to-clojure (.execute op))))
+
+
+(defn- mk-table-reference [{:keys [dataset-id project-id table-id]}]
+  (doto (TableReference. )
+    (.setDatasetId dataset-id)
+    (.setProjectId project-id)
+    (.setTableId table-id)))
+
+(defn load-job
+  "Creates a job to load data from sources into the table, identified by
+  its table reference. "
+  [{:keys [dataset-id project-id table-id] :as table-reference} source-uris & {:keys [create-disposition source-format write-disposition quote skip-leading allow-quoted-newlines]
+                                                                               :or   {source-format :json
+                                                                                      allow-quoted-newlines false
+                                                                                      create-disposition :create-never
+                                                                                      write-disposition :append}}]
+  (let [load (JobConfigurationLoad.)]
+    (.setDestinationTable load (mk-table-reference table-reference))
+    (.setSourceUris load source-uris)
+    (when quote
+      (.setQuote load quote))
+    (when skip-leading
+      (.setSkipLeadingRows load (int skip-leading)))
+    (.setAllowQuotedNewlines load allow-quoted-newlines)
+    (.setSourceFormat load ({:json "NEWLINE_DELIMITED_JSON"
+                             :csv  "CSV"} source-format))
+    (.setCreateDisposition load ({:create-never  "CREATE_NEVER"
+                                  :create-needed "CREATE_NEEDED"} create-disposition))
+    (.setWriteDisposition load ({:append   "WRITE_APPEND"
+                                 :empty    "WRITE_EMPTY"
+                                 :truncate "WRITE_TRUNCATE"} write-disposition))
+    (doto (Job.)
+      (.setConfiguration (-> (JobConfiguration.) (.setLoad load))))))
 
 
 (def query-priority {:interactive "INTERACTIVE"
